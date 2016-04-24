@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009 Ubixum, Inc. 
+ * Copyright (C) 2009 Ubixum, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,10 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  **/
 
-#ifdef DEBUG 
+#ifdef DEBUG
 #include "softserial.h"
 #include <stdio.h>
-#define putchar soft_putchar
+#define putchar soft_putchar //Define the putchar in serial.c of fx2 lib
 #define getchar soft_getchar
 #else
 #define printf(...)
@@ -46,21 +46,21 @@ extern void main_init();
 void main() {
 
 #ifdef DEBUG
- SETCPUFREQ(CLK_48M); // required for sio0_init 
+ SETCPUFREQ(CLK_48M); // required for sio0_init
  // main_init can still set this to whatever you want.
  soft_sio0_init(57600); // needed for printf if debug defined
 #endif
 
- main_init();
+ main_init(); //sets frequency and the Chip Revision Control Register
 
  // set up interrupts.
- USE_USB_INTS();
- 
- ENABLE_SUDAV();
- ENABLE_USBRESET();
- ENABLE_HISPEED(); 
- ENABLE_SUSPEND();
- ENABLE_RESUME();
+ USE_USB_INTS();//autovectored usb interrupts. Look at 4.4.2 for more information
+
+ ENABLE_SUDAV();  //Setup data available interrupt
+ ENABLE_USBRESET(); //Bus reset
+ ENABLE_HISPEED(); //Entered high speed operation
+ ENABLE_SUSPEND(); //0x0C
+ ENABLE_RESUME(); //defined in fx2ints.h
 
  EA=1;
 
@@ -71,7 +71,7 @@ void main() {
 #else
  USBCS &= ~bmDISCON;
 #endif
- 
+
  while(TRUE) {
 
      main_loop();
@@ -98,7 +98,7 @@ void main() {
            nop
            nop
            __endasm;
-        } while ( !remote_wakeup_allowed && REMOTE_WAKEUP()); 
+        } while ( !remote_wakeup_allowed && REMOTE_WAKEUP());
         printf ( "I'm going to wake up.\n");
 
         // resume
@@ -119,7 +119,7 @@ void main() {
 void resume_isr() __interrupt RESUME_ISR {
  CLEAR_RESUME();
 }
-  
+
 void sudav_isr() __interrupt SUDAV_ISR {
  dosud=TRUE;
  CLEAR_SUDAV();
