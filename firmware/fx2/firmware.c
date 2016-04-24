@@ -51,7 +51,7 @@ void main() {
  soft_sio0_init(57600); // needed for printf if debug defined
 #endif
 
- main_init(); //sets frequency and the Chip Revision Control Register
+ main_init(); //defined in app.c
 
  // set up interrupts.
  USE_USB_INTS();//autovectored usb interrupts. Look at 4.4.2 for more information
@@ -67,19 +67,20 @@ void main() {
 // iic files (c2 load) don't need to renumerate/delay
 // trm 3.6
 #ifndef NORENUM
- RENUMERATE();
+ RENUMERATE(); //Defined in fx2macros.h, uses the USBCS SFR to renumerate(It does disconnect, renumerate and connect back)
 #else
  USBCS &= ~bmDISCON;
 #endif
 
  while(TRUE) {
 
-     main_loop();
+     main_loop(); //defined in app.c
 
      if (dosud) {
-       dosud=FALSE;
-       handle_setupdata();
+       dosud=FALSE; //Set from ISR
+       handle_setupdata(); //Defined in setupdat.c
      }
+
 
 #ifdef SUSPEND_ENABLED
      if (dosuspend) {
@@ -121,7 +122,7 @@ void resume_isr() __interrupt RESUME_ISR {
 }
 
 void sudav_isr() __interrupt SUDAV_ISR {
- dosud=TRUE;
+ dosud=TRUE; //Calls setupdat.c to handle setup data
  CLEAR_SUDAV();
 }
 void usbreset_isr() __interrupt USBRESET_ISR {
@@ -138,7 +139,8 @@ void suspend_isr() __interrupt SUSPEND_ISR {
  CLEAR_SUSPEND();
 }
 
-
+// DO we need to use the high speed baud generator as given in 14.3?
+//If DEBUG is defined will it cause a problem?
 void ISR_USART0(void) __interrupt 4 __critical {
 	if (RI) {
 		RI=0;
