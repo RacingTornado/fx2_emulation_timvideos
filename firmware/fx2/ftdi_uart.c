@@ -1,3 +1,36 @@
+
+
+#include <fx2macros.h>
+#include <fx2ints.h>
+#include <autovector.h>
+#include <delay.h>
+#include <setupdat.h>
+
+#include "cdc.h"
+
+#define SYNCDELAY SYNCDELAY4
+
+#define FTDI_RS0_CTS    (1 << 4)
+#define FTDI_RS0_DSR    (1 << 5)
+#define FTDI_RS0_RI     (1 << 6)
+#define FTDI_RS0_RLSD   (1 << 7)
+
+#define FTDI_RS_DR  1
+#define FTDI_RS_OE (1<<1)
+#define FTDI_RS_PE (1<<2)
+#define FTDI_RS_FE (1<<3)
+#define FTDI_RS_BI (1<<4)
+#define FTDI_RS_THRE (1<<5)
+#define FTDI_RS_TEMT (1<<6)
+#define FTDI_RS_FIFO  (1<<7)
+
+
+
+
+//There are different endpoints on the FX2. However the CPU can access the endpoint 0 or endpoint 1 which is
+//smaller. In this case, the endpoint needs to be configured by setting the EPIOUTCFG, and EP1INCFG
+//registers . For endpoint configuration, refer Table 8.2
+
 static void ProcessXmitData(void)
 {
 	// reset Timer 0
@@ -10,34 +43,20 @@ static void ProcessXmitData(void)
 
 	// Send the packet.
 	SYNCDELAY;
-	EP1INBC = bytes_waiting_for_xmit + 2;
+	//EP1INBC = bytes_waiting_for_xmit + 2;
 
-	bytes_waiting_for_xmit = 0;
+	//bytes_waiting_for_xmit = 0;
 }
 
 
 static void putchar(char c)
 {
-   xdata unsigned char *dest=EP1INBUF + bytes_waiting_for_xmit + 2;
 
-   // Wait (if needed) for EP1INBUF ready to accept data
-   while (EP1INCS & 0x02);
-
-   *dest = c;
-
-   if (++bytes_waiting_for_xmit >= 62) ProcessXmitData();
-
-   // Set Timer 0 if it isn't set and we've got data ready to go
-   if (bytes_waiting_for_xmit && !(TCON & 0x10)) {
-      TH0 = MSB(0xffff - latency_us);
-      TL0 = LSB(0xffff - latency_us);
-      TCON |= 0x10;
-   }
 }
 
 static void ProcessRecvData(void)
 {
-	xdata const unsigned char *src=EP1OUTBUF;
+	__xdata const unsigned char *src=EP1OUTBUF;
 	unsigned int len = EP1OUTBC;
 	unsigned int i;
 
@@ -82,180 +101,69 @@ static void ProcessRecvData(void)
 //See table 2.2 for more information
 static void SetupCommand(void)
 {
-   int i;
-   int interface;
 
-   // Errors are signaled by stalling endpoint 0.
+}
 
-   switch(SETUPDAT[0] & SETUP_MASK) {
 
-   case SETUP_STANDARD_REQUEST:
-      switch(SETUPDAT[1])
-	 {
-	 case SC_GET_DESCRIPTOR:
-	    switch(SETUPDAT[3])
-	       {
-	       case GD_DEVICE:
-		  SUDPTRH = MSB(&myDeviceDscr);
-		  SUDPTRL = LSB(&myDeviceDscr);
-		  break;
-	       case GD_DEVICE_QUALIFIER:
-		  SUDPTRH = MSB(&myDeviceQualDscr);
-		  SUDPTRL = LSB(&myDeviceQualDscr);
-		  break;
-	       case GD_CONFIGURATION:
-		  myConfigDscr.type = CONFIG_DSCR;
-		  if (USBCS & bmHSM) {
-		     // High speed parameters
-		     myInEndpntDscr.mp = 64;
-		     myOutEndpntDscr.mp = 64;
-		  } else {
-		     // Full speed parameters
-		     myInEndpntDscr.mp = 64;
-		     myOutEndpntDscr.mp = 64;
-		  }
-		  SUDPTRH = MSB(&myConfigDscr);
-		  SUDPTRL = LSB(&myConfigDscr);
-		  break;
-	       case GD_OTHER_SPEED_CONFIGURATION:
-		  myConfigDscr.type = OTHERSPEED_DSCR;
-		  if (USBCS & bmHSM) {
-		     // We're in high speed mode, this is the Other
-		     // descriptor, so these are full speed parameters
-		     myInEndpntDscr.mp = 64;
-		     myOutEndpntDscr.mp = 64;
-		  } else {
-		     // We're in full speed mode, this is the Other
-		     // descriptor, so these are high speed parameters
-		     myInEndpntDscr.mp = 64;
-		     myOutEndpntDscr.mp = 64;
-		  }
-		  SUDPTRH = MSB(&myConfigDscr);
-		  SUDPTRL = LSB(&myConfigDscr);
-		  break;
-	       case GD_STRING:
-		  if (SETUPDAT[2] >= count_array_size((void **) USB_strings)) {
-		     EZUSB_STALL_EP0();
-		  } else {
-		     for (i=0; i<31; i++) {
-			if (USB_strings[SETUPDAT[2]][i] == '\0') break;
-			EP0BUF[2*i+2] = USB_strings[SETUPDAT[2]][i];
-			EP0BUF[2*i+3] = '\0';
-		     }
-		     EP0BUF[0] = 2*i+2;
-		     EP0BUF[1] = STRING_DSCR;
-		     SYNCDELAY; EP0BCH = 0;
-		     SYNCDELAY; EP0BCL = 2*i+2;
-		  }
-		  break;
-	       default:            // Invalid request
-		  EZUSB_STALL_EP0();
-	       }
-	    break;
-	 case SC_GET_INTERFACE:
-	    interface = SETUPDAT[4];
-	    if (interface < NUM_INTERFACES) {
-	       EP0BUF[0] = InterfaceSetting[interface];
-	       EP0BCH = 0;
-	       EP0BCL = 1;
-	    }
-	    break;
-	 case SC_SET_INTERFACE:
-	    interface = SETUPDAT[4];
-	    if (interface < NUM_INTERFACES) {
-	       InterfaceSetting[interface] = SETUPDAT[2];
-	    }
-	    break;
-	 case SC_SET_CONFIGURATION:
-	    Configuration = SETUPDAT[2];
-	    break;
-	 case SC_GET_CONFIGURATION:
-	    EP0BUF[0] = Configuration;
-	    EP0BCH = 0;
-	    EP0BCL = 1;
-	    break;
-	 case SC_GET_STATUS:
-	    switch(SETUPDAT[0])
-	       {
-	       case GS_DEVICE:
-		  EP0BUF[0] = ((BYTE)Rwuen << 1) | (BYTE)Selfpwr;
-		  EP0BUF[1] = 0;
-		  EP0BCH = 0;
-		  EP0BCL = 2;
-		  break;
-	       case GS_INTERFACE:
-		  EP0BUF[0] = 0;
-		  EP0BUF[1] = 0;
-		  EP0BCH = 0;
-		  EP0BCL = 2;
-		  break;
-	       case GS_ENDPOINT:
-		  EP0BUF[0] = *(BYTE xdata *) epcs(SETUPDAT[4]) & bmEPSTALL;
-		  EP0BUF[1] = 0;
-		  EP0BCH = 0;
-		  EP0BCL = 2;
-		  break;
-	       default:            // Invalid Command
-		  EZUSB_STALL_EP0();
-	       }
-	    break;
-	 case SC_CLEAR_FEATURE:
-	    switch(SETUPDAT[0])
-	       {
-	       case FT_DEVICE:
-		  if(SETUPDAT[2] == 1)
-		     Rwuen = FALSE;       // Disable Remote Wakeup
-		  else
-		     EZUSB_STALL_EP0();
-		  break;
-	       case FT_ENDPOINT:
-		  if(SETUPDAT[2] == 0)
-		     {
-			*(BYTE xdata *) epcs(SETUPDAT[4]) &= ~bmEPSTALL;
-			EZUSB_RESET_DATA_TOGGLE( SETUPDAT[4] );
-		     }
-		  else
-		     EZUSB_STALL_EP0();
-		  break;
-	       }
-	    break;
-	 case SC_SET_FEATURE:
-	    switch(SETUPDAT[0])
-	       {
-	       case FT_DEVICE:
-		  if((SETUPDAT[2] == 1) && Rwuen_allowed)
-		     Rwuen = TRUE;      // Enable Remote Wakeup
-		  else if(SETUPDAT[2] == 2)
-		     // Set Feature Test Mode.  The core handles this
-		     // request.  However, it is necessary for the
-		     // firmware to complete the handshake phase of the
-		     // control transfer before the chip will enter test
-		     // mode.  It is also necessary for FX2 to be
-		     // physically disconnected (D+ and D-) from the host
-		     // before it will enter test mode.
-		     break;
-		  else
-		     EZUSB_STALL_EP0();
-		  break;
-	       case FT_ENDPOINT:
-		  *(BYTE xdata *) epcs(SETUPDAT[4]) |= bmEPSTALL;
-		  break;
-	       default:
-		  EZUSB_STALL_EP0();
-	       }
-	    break;
-	 default:                     // *** Invalid Command
-	    EZUSB_STALL_EP0();
-	    break;
-	 }
-      break;
 
-   default:
-      EZUSB_STALL_EP0();
-      break;
-   }
 
-   // Acknowledge handshake phase of device request
-   EP0CS |= bmHSNAK;
+
+
+
+
+
+//Check what FX2 configs are changed between this and original firmware
+
+static void Initialize(void)
+{
+	// Note that increasing the clock speed to 24 or 48 MHz would
+	// affect our timer calculations below.  I use 12 MHz because
+	// this lets me use the smallest numbers for our counter (i.e,
+	// 40000 for the default 40 ms latency); the counter is only
+	// sixteen bits.
+
+	IFCONFIG=0xc0;  // Internal IFCLK, 48MHz; A,B as normal ports.
+	SYNCDELAY;
+	//Chip Revision Control Register
+	REVCTL=0x03;  // See TRM...
+	SYNCDELAY;
+
+	// Endpoint configuration - everything disabled except
+	// bidirectional transfers on EP1.
+
+	EP1OUTCFG=0xa0;
+	EP1INCFG=0xa0;
+	EP2CFG=0;
+	EP4CFG=0;
+	EP6CFG=0;
+	EP8CFG=0;
+
+	SYNCDELAY;
+	EP1OUTBC=0xff; // Arm endpoint 1 for OUT (host->device) transfers
+	//See section 8.6.1.5
+
+	// Setup Data Pointer - AUTO mode
+	//
+	// In this mode, there are two ways to send data on EP0.  You
+	// can either copy the data into EP0BUF and write the packet
+	// length into EP0BCH/L to start the transfer, or you can
+	// write the (word-aligned) address of a USB descriptor into
+	// SUDPTRH/L; the length is computed automatically.
+	SUDPTRCTL = 1;
+    //See 15.12.27
+	// Enable USB interrupt
+	IE = 0x80;
+	EIE = 0x01;
+
+	// Enable SUDAV (setup data available) interrupt
+	USBIE = 0x01;
+}
+
+
+void config_uart()
+{
+   Initialize();
+
+
 }
 

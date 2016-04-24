@@ -19,7 +19,7 @@
 #ifdef DEBUG
 #include "softserial.h"
 #include <stdio.h>
-#define putchar soft_putchar //Define the putchar in serial.c of fx2 lib
+#define putchar soft_putchar //defined in app.c
 #define getchar soft_getchar
 #else
 #define printf(...)
@@ -41,6 +41,7 @@ volatile __bit dosuspend=FALSE;
 // custom functions
 extern void main_loop();
 extern void main_init();
+extern void config_uart();
 
 
 void main() {
@@ -51,7 +52,11 @@ void main() {
  soft_sio0_init(57600); // needed for printf if debug defined
 #endif
 
- main_init(); //defined in app.c
+
+ //This is for the original FIFO mode
+ //main_init(); //defined in app.c
+
+ config_uart();
 
  // set up interrupts.
  USE_USB_INTS();//autovectored usb interrupts. Look at 4.4.2 for more information

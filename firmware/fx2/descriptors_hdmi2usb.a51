@@ -28,8 +28,9 @@
 ; //////////////////////////////////////////////////////////////////////////////
 
 .module DEV_DSCR
-.include "date.inc"
+.include "date.inc"                      ;;This is generated from the makefile.
 
+                                         ;;Why are we doing this in this process??
         DSCR_DEVICE_TYPE   =    1        ;; Descriptor type: Device
         DSCR_CONFIG_TYPE   =    2        ;; Descriptor type: Configuration
         DSCR_STRING_TYPE   =    3        ;; Descriptor type: String
