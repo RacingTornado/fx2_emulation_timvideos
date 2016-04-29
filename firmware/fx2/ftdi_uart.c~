@@ -131,17 +131,17 @@ static void Initialize(void)
 	// Endpoint configuration - everything disabled except
 	// bidirectional transfers on EP1.
 	//Activate and set EP1 end point
-	//In cypress TRM, according to 8.4 , there needs to be a SYNCDELAY after every configuration. Edited
+    //In cypress TRM, according to 8.4 , there needs to be a SYNCDELAY after every configuration. Edited
 	EP1OUTCFG=0xa0;
-	SYNCDELAY;
+    SYNCDELAY;
 	EP1INCFG=0xa0;
-	SYNCDELAY;
+    SYNCDELAY;
 	EP2CFG=0;
-	SYNCDELAY;
+    SYNCDELAY;
 	EP4CFG=0;
-	SYNCDELAY;
+    SYNCDELAY;
 	EP6CFG=0;
-	SYNCDELAY;
+    SYNCDELAY;
 	EP8CFG=0;
 	SYNCDELAY;
 	EP1OUTBC=0xff; // Arm endpoint 1 for OUT (host->device) transfers
@@ -161,7 +161,7 @@ static void Initialize(void)
 	//Here the auto mode is used, which can be used for sending speed descriptors only.
 	//No explicit loding of the EP0BCH:L is needed in this case.
 	//The SUDPTRCTl is the SPDAUTO bit, table 8-7
-	//See 15.12.27
+    //See 15.12.27
 	SUDPTRCTL = 1;
 
 	// Enable USB interrupt
@@ -180,22 +180,22 @@ void config_uart()
     //First set bit.3 in USBCS to 1, DISCON bit
     USBCS |= bmDISCON;
     //Do all your initialization. Clock frequency and UART baud rate generator
-    Initialize();
-    //Set bit.1 in USBCS, firmware handles all device requests
-    USBCS |= bmRENUM;
-    //Retain USBCS setting and toggle only the DISCON bit
-    USBCS &= ~(bmDISCON);
+	Initialize();
+	//Set bit.1 in USBCS, firmware handles all device requests
+	USBCS |= bmRENUM;
+	//Retain USBCS setting and toggle only the DISCON bit
+	USBCS &= ~(bmDISCON);
 
-    // Configure Timer 0 (but leave it unset)
-    // mode 1 (16-bit); ungated; divide system clock by 12
-    //This is the CKCON bit
-    //This timer increments every 12 CLKOUT cycles
-
-
+	// Configure Timer 0 (but leave it unset)
+	// mode 1 (16-bit); ungated; divide system clock by 12
+	//This is the CKCON bit
+	//This timer increments every 12 CLKOUT cycles
 
 
-    //The other 3 LSB bits are for memeory access stretch
-    /*
+
+
+	//The other 3 LSB bits are for memeory access stretch
+	/*
     ╔═════════╤══════════════════════════════════════════════════════════════╗
     ║ Bit     │ Function                                                     ║
     ╠═════════╪══════════════════════════════════════════════════════════════╣
@@ -220,8 +220,8 @@ void config_uart()
 
 
     //I dont know if this can be bit address since in fx2regs.h , there doesnt seem to be split up
-    CKCON &= ~(0x08);
-    /*
+	CKCON &= ~(0x08);
+	/*
     ╔════════╤═══════════════════════════════════════════════════════════════════════════╗
     ║ Bit    │ Function                                                                  ║
     ╠════════╪═══════════════════════════════════════════════════════════════════════════╣
@@ -267,10 +267,10 @@ void config_uart()
     ║ TMOD.0 │ - Timer 0 mode select bit 0.                                              ║
     ╚════════╧═══════════════════════════════════════════════════════════════════════════╝
     */
-    TMOD = 0x01;
-    //TCON
+	TMOD = 0x01;
+	//TCON
 
-    /*
+	/*
 
     ╔════════╤══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
     ║ Bit    │ Function                                                                                                             ║
@@ -326,11 +326,11 @@ void config_uart()
     ║        │ is detected as a low level when IT0 = 0                                                                              ║
     ╚════════╧══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
-    */
+	*/
 
 
 
-    TCON &= ~0x30;
+	TCON &= ~0x30;
 
 
 
