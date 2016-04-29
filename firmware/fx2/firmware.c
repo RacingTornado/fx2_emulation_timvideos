@@ -54,7 +54,7 @@ void main() {
 
 
  //This is for the original FIFO mode
- //main_init(); //defined in app.c
+ //main_init(); //defined in device.c . which one do we call??
 
  config_uart();
 
@@ -71,6 +71,9 @@ void main() {
 
 // iic files (c2 load) don't need to renumerate/delay
 // trm 3.6
+//We always do renumerate in init. This is a better way of doing things
+//We can renumeraate again , but do we need to ??
+
 #ifndef NORENUM
  RENUMERATE(); //Defined in fx2macros.h, uses the USBCS SFR to renumerate(It does disconnect, renumerate and connect back)
 #else
